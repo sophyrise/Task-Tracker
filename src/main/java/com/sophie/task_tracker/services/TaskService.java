@@ -14,9 +14,6 @@ import com.sophie.task_tracker.repositories.ProjectRepository;
 import com.sophie.task_tracker.repositories.TaskRepository;
 import com.sophie.task_tracker.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +34,6 @@ public class TaskService {
         Project project = projectRepository.findById(taskCreateDto.getProjectId())
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + taskCreateDto.getProjectId()));
 
-        // Check if user has access to the project
         if (!hasAccessToProject(project, userId, userRole)) {
             throw new RuntimeException("Access denied to project");
         }
@@ -50,7 +46,6 @@ public class TaskService {
         task.setPriority(taskCreateDto.getPriority());
         task.setStatus(TaskStatus.TODO);
 
-        // Assign user if specified (MANAGER/ADMIN only)
         if (taskCreateDto.getAssignedUserId() != null) {
             if (userRole != Role.MANAGER && userRole != Role.ADMIN) {
                 throw new RuntimeException("Only MANAGER/ADMIN can assign users to tasks");
@@ -68,7 +63,6 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
 
-        // Check access permissions
         if (!hasAccessToTask(task, userId, userRole)) {
             throw new RuntimeException("Access denied to task");
         }
@@ -76,21 +70,19 @@ public class TaskService {
         return taskMapper.toDto(task);
     }
 
-    public Page<TaskDto> getTasksByProject(Long projectId, Long userId, Role userRole, Pageable pageable) {
+    public List<TaskDto> getTasksByProject(Long projectId, Long userId, Role userRole) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
-        // Check access permissions
         if (!hasAccessToProject(project, userId, userRole)) {
             throw new RuntimeException("Access denied to project");
         }
 
-        Page<Task> tasks = taskRepository.findByProject(project, pageable);
-        return tasks.map(taskMapper::toDto);
+        List<Task> tasks = taskRepository.findByProject(project);
+        return tasks.stream().map(taskMapper::toDto).toList();
     }
 
-    public Page<TaskDto> getTasksByAssignedUser(Long assignedUserId, Long userId, Role userRole, Pageable pageable) {
-        // Users can only see their own assigned tasks, unless they're ADMIN
+    public List<TaskDto> getTasksByAssignedUser(Long assignedUserId, Long userId, Role userRole) {
         if (userRole != Role.ADMIN && !assignedUserId.equals(userId)) {
             throw new RuntimeException("Access denied to view other user's tasks");
         }
@@ -98,64 +90,56 @@ public class TaskService {
         User assignedUser = userRepository.findById(assignedUserId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + assignedUserId));
 
-        Page<Task> tasks = taskRepository.findByAssignedUser(assignedUser, pageable);
-        return tasks.map(taskMapper::toDto);
+        List<Task> tasks = taskRepository.findByAssignedUser(assignedUser);
+        return tasks.stream().map(taskMapper::toDto).toList();
     }
 
-    public Page<TaskDto> getTasksByStatus(TaskStatus status, Long userId, Role userRole, Pageable pageable) {
-        Page<Task> tasks;
+    public List<TaskDto> getTasksByStatus(TaskStatus status, Long userId, Role userRole) {
+        List<Task> tasks;
         
         if (userRole == Role.ADMIN) {
-            // Admin can see all tasks
-            tasks = taskRepository.findByStatus(status, pageable);
+            tasks = taskRepository.findByStatus(status);
         } else {
-            // Others can only see their own tasks
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-            tasks = taskRepository.findByStatusAndAssignedUser(status, user, pageable);
+            tasks = taskRepository.findByStatusAndAssignedUser(status, user);
         }
         
-        return tasks.map(taskMapper::toDto);
+        return tasks.stream().map(taskMapper::toDto).toList();
     }
 
-    public Page<TaskDto> getTasksByPriority(TaskPriority priority, Long userId, Role userRole, Pageable pageable) {
-        Page<Task> tasks;
+    public List<TaskDto> getTasksByPriority(TaskPriority priority, Long userId, Role userRole) {
+        List<Task> tasks;
         
         if (userRole == Role.ADMIN) {
-            // Admin can see all tasks
-            tasks = taskRepository.findByPriority(priority, pageable);
+            tasks = taskRepository.findByPriority(priority);
         } else {
-            // Others can only see their own tasks
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-            tasks = taskRepository.findByPriorityAndAssignedUser(priority, user, pageable);
+            tasks = taskRepository.findByPriorityAndAssignedUser(priority, user);
         }
         
-        return tasks.map(taskMapper::toDto);
+        return tasks.stream().map(taskMapper::toDto).toList();
     }
 
     public TaskDto updateTask(Long taskId, TaskUpdateDto taskUpdateDto, Long userId, Role userRole) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
 
-        // Check access permissions
         if (!hasAccessToTask(task, userId, userRole)) {
             throw new RuntimeException("Access denied to task");
         }
 
-        // Only assigned user can update status
-        if (taskUpdateDto.getStatus() != null && 
+        if (taskUpdateDto.getStatus() != null &&
             (task.getAssignedUser() == null || !task.getAssignedUser().getId().equals(userId))) {
             throw new RuntimeException("Only assigned user can update task status");
         }
 
-        // Only MANAGER/ADMIN can assign users
-        if (taskUpdateDto.getAssignedUserId() != null && 
+        if (taskUpdateDto.getAssignedUserId() != null &&
             userRole != Role.MANAGER && userRole != Role.ADMIN) {
             throw new RuntimeException("Only MANAGER/ADMIN can assign users to tasks");
         }
 
-        // Update fields
         if (taskUpdateDto.getTitle() != null) {
             task.setTitle(taskUpdateDto.getTitle());
         }
@@ -185,7 +169,6 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
 
-        // Check access permissions
         if (!hasAccessToTask(task, userId, userRole)) {
             throw new RuntimeException("Access denied to task");
         }
@@ -193,51 +176,35 @@ public class TaskService {
         taskRepository.delete(task);
     }
 
-    public Page<TaskDto> getTasksDueBefore(LocalDate date, Long userId, Role userRole, Pageable pageable) {
+    public List<TaskDto> getTasksDueBefore(LocalDate date, Long userId, Role userRole) {
         List<Task> tasks;
         
         if (userRole == Role.ADMIN) {
-            // Admin can see all tasks
             tasks = taskRepository.findByDueDateBefore(date);
         } else {
-            // Others can only see their own tasks
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
             tasks = taskRepository.findByDueDateBeforeAndAssignedUser(date, user);
         }
         
-        List<TaskDto> list = tasks.stream()
-                .map(taskMapper::toDto)
-                .toList();
-        
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), list.size());
-        List<TaskDto> content = start > end ? List.of() : list.subList(start, end);
-        return new PageImpl<>(content, pageable, list.size());
+        return tasks.stream().map(taskMapper::toDto).toList();
     }
 
     private boolean hasAccessToTask(Task task, Long userId, Role userRole) {
-        // Admin has access to all tasks
         if (userRole == Role.ADMIN) {
             return true;
         }
         
-        // Project owner has access
         if (task.getProject().getOwner().getId().equals(userId)) {
             return true;
         }
-        
-        // Assigned user has access
         return task.getAssignedUser() != null && task.getAssignedUser().getId().equals(userId);
     }
 
     private boolean hasAccessToProject(Project project, Long userId, Role userRole) {
-        // Admin has access to all projects
         if (userRole == Role.ADMIN) {
             return true;
         }
-        
-        // Project owner has access
         return project.getOwner().getId().equals(userId);
     }
 }

@@ -9,8 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -63,16 +62,7 @@ public class ProjectController {
         return ResponseEntity.ok(project);
     }
 
-    @GetMapping("/my-projects")
-    @Operation(summary = "Get my projects", description = "Retrieve projects owned by the authenticated user")
-    public ResponseEntity<Page<ProjectDto>> getMyProjects(
-            Pageable pageable,
-            Authentication authentication) {
-        
-        Long userId = getUserIdFromAuthentication(authentication);
-        Page<ProjectDto> projects = projectService.getProjectsByOwner(userId, pageable);
-        return ResponseEntity.ok(projects);
-    }
+
 
     @PutMapping("/{id}")
     @Operation(summary = "Update project", description = "Update an existing project")
@@ -114,16 +104,15 @@ public class ProjectController {
     }
 
     private Role getRoleFromAuthentication(Authentication authentication) {
-        // Extract role from authentication authorities
         if (authentication != null && authentication.getAuthorities() != null && !authentication.getAuthorities().isEmpty()) {
             String authority = authentication.getAuthorities().iterator().next().getAuthority();
             try {
                 return Role.valueOf(authority);
             } catch (IllegalArgumentException e) {
-                return Role.USER; // Default role if authority doesn't match
+                return Role.USER;
             }
         }
-        return Role.USER; // Default role
+        return Role.USER;
     }
 
 }

@@ -9,8 +9,7 @@ import com.sophie.task_tracker.mappers.ProjectMapper;
 import com.sophie.task_tracker.repositories.ProjectRepository;
 import com.sophie.task_tracker.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,7 +46,6 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
-        // Check access permissions
         if (!hasAccessToProject(project, userId, userRole)) {
             throw new RuntimeException("Access denied to project");
         }
@@ -55,19 +53,16 @@ public class ProjectService {
         return projectMapper.toDto(project);
     }
 
-    public Page<ProjectDto> getProjectsByOwner(Long ownerId, Pageable pageable) {
-        Page<Project> projects = projectRepository.findByOwnerId(ownerId, pageable);
-        return projects.map(projectMapper::toDto);
-    }
+
 
     public List<ProjectDto> getAllProjects(Long userId, Role userRole) {
         List<Project> projects;
         
         if (userRole == Role.ADMIN) {
-            // Admin can see all projects
+            // admin can see all projects
             projects = projectRepository.findAll();
         } else {
-            // Others can only see their own projects
+            // others can only see their own
             projects = projectRepository.findByOwnerId(userId);
         }
         
@@ -80,13 +75,11 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
-        // Check access permissions
         if (!hasAccessToProject(project, userId, userRole)) {
             throw new RuntimeException("Access denied to project");
         }
 
-        // Check if new name conflicts with existing project
-        if (!project.getName().equals(projectUpdateDto.getName()) && 
+        if (!project.getName().equals(projectUpdateDto.getName()) &&
             projectRepository.existsByNameAndOwner(projectUpdateDto.getName(), project.getOwner())) {
             throw new RuntimeException("Project with name '" + projectUpdateDto.getName() + "' already exists for this user");
         }
@@ -102,7 +95,6 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
-        // Check access permissions
         if (!hasAccessToProject(project, userId, userRole)) {
             throw new RuntimeException("Access denied to project");
         }
@@ -111,12 +103,9 @@ public class ProjectService {
     }
 
     private boolean hasAccessToProject(Project project, Long userId, Role userRole) {
-        // Admin has access to all projects
         if (userRole == Role.ADMIN) {
             return true;
         }
-        
-        // Project owner has access
         return project.getOwner().getId().equals(userId);
     }
 }

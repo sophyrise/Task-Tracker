@@ -8,6 +8,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class TaskTrackerApplicationTests {
 
@@ -37,5 +38,4 @@ class TaskTrackerApplicationTests {
 		ResponseEntity<String> res = rest.getForEntity("http://localhost:" + port + "/swagger-ui.html", String.class);
 		assert res.getStatusCode() == HttpStatus.OK : "Swagger UI did not load. Check security config and springdoc version.";
 	}
-
 }

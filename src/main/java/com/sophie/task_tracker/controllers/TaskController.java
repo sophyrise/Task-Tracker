@@ -12,8 +12,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -61,65 +59,60 @@ public class TaskController {
 
     @GetMapping("/project/{projectId}")
     @Operation(summary = "Get tasks by project", description = "Retrieve all tasks for a specific project")
-    public ResponseEntity<Page<TaskDto>> getTasksByProject(
+    public ResponseEntity<List<TaskDto>> getTasksByProject(
             @PathVariable Long projectId,
-            Pageable pageable,
             Authentication authentication) {
         
         Long userId = getUserIdFromAuthentication(authentication);
         Role userRole = getRoleFromAuthentication(authentication);
-        Page<TaskDto> tasks = taskService.getTasksByProject(projectId, userId, userRole, pageable);
+        List<TaskDto> tasks = taskService.getTasksByProject(projectId, userId, userRole);
         return ResponseEntity.ok(tasks);
     }
 
     @GetMapping("/assigned/{userId}")
     @Operation(summary = "Get tasks by assigned user", description = "Retrieve all tasks assigned to a specific user")
-    public ResponseEntity<Page<TaskDto>> getTasksByAssignedUser(
+    public ResponseEntity<List<TaskDto>> getTasksByAssignedUser(
             @PathVariable Long userId,
-            Pageable pageable,
             Authentication authentication) {
         
         Long currentUserId = getUserIdFromAuthentication(authentication);
         Role userRole = getRoleFromAuthentication(authentication);
-        Page<TaskDto> tasks = taskService.getTasksByAssignedUser(userId, currentUserId, userRole, pageable);
+        List<TaskDto> tasks = taskService.getTasksByAssignedUser(userId, currentUserId, userRole);
         return ResponseEntity.ok(tasks);
     }
 
     @GetMapping("/status/{status}")
     @Operation(summary = "Get tasks by status", description = "Retrieve all tasks with a specific status")
-    public ResponseEntity<Page<TaskDto>> getTasksByStatus(
+    public ResponseEntity<List<TaskDto>> getTasksByStatus(
             @PathVariable TaskStatus status,
-            Pageable pageable,
             Authentication authentication) {
         
         Long userId = getUserIdFromAuthentication(authentication);
         Role userRole = getRoleFromAuthentication(authentication);
-        Page<TaskDto> tasks = taskService.getTasksByStatus(status, userId, userRole, pageable);
+        List<TaskDto> tasks = taskService.getTasksByStatus(status, userId, userRole);
         return ResponseEntity.ok(tasks);
     }
 
     @GetMapping("/priority/{priority}")
     @Operation(summary = "Get tasks by priority", description = "Retrieve all tasks with a specific priority")
-    public ResponseEntity<Page<TaskDto>> getTasksByPriority(
+    public ResponseEntity<List<TaskDto>> getTasksByPriority(
             @PathVariable TaskPriority priority,
-            Pageable pageable,
             Authentication authentication) {
         
         Long userId = getUserIdFromAuthentication(authentication);
         Role userRole = getRoleFromAuthentication(authentication);
-        Page<TaskDto> tasks = taskService.getTasksByPriority(priority, userId, userRole, pageable);
+        List<TaskDto> tasks = taskService.getTasksByPriority(priority, userId, userRole);
         return ResponseEntity.ok(tasks);
     }
 
     @GetMapping("/due-before/{date}")
-    @Operation(summary = "Get tasks due before date", description = "Retrieve tasks due before a date (paged)")
-    public ResponseEntity<Page<TaskDto>> getTasksDueBefore(
+    @Operation(summary = "Get tasks due before date", description = "Retrieve tasks due before a date")
+    public ResponseEntity<List<TaskDto>> getTasksDueBefore(
             @PathVariable LocalDate date,
-            Pageable pageable,
             Authentication authentication) {
         Long userId = getUserIdFromAuthentication(authentication);
         Role userRole = getRoleFromAuthentication(authentication);
-        Page<TaskDto> tasks = taskService.getTasksDueBefore(date, userId, userRole, pageable);
+        List<TaskDto> tasks = taskService.getTasksDueBefore(date, userId, userRole);
         return ResponseEntity.ok(tasks);
     }
 
@@ -178,15 +171,14 @@ public class TaskController {
     }
 
     private Role getRoleFromAuthentication(Authentication authentication) {
-        // Extract role from authentication authorities
         if (authentication != null && authentication.getAuthorities() != null && !authentication.getAuthorities().isEmpty()) {
             String authority = authentication.getAuthorities().iterator().next().getAuthority();
             try {
                 return Role.valueOf(authority);
             } catch (IllegalArgumentException e) {
-                return Role.USER; // Default role if authority doesn't match
+                return Role.USER;
             }
         }
-        return Role.USER; // Default role
+        return Role.USER;
     }
 }
